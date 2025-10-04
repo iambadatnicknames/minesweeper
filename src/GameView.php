@@ -18,7 +18,6 @@ class GameView
         \cli\line("\nRemaining mines: " . $remainingMines);
         \cli\line("");
 
-        // Display column numbers
         $header = "   ";
         for ($col = 0; $col < $size; $col++) {
             $header .= sprintf("%2d ", $col);
@@ -26,7 +25,6 @@ class GameView
         \cli\line($header);
         \cli\line("   " . str_repeat("---", $size));
 
-        // Display rows with row numbers
         for ($row = 0; $row < $size; $row++) {
             $line = sprintf("%2d|", $row);
             for ($col = 0; $col < $size; $col++) {

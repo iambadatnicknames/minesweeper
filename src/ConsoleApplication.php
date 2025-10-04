@@ -7,10 +7,12 @@ use iambadatnicknames\minesweeper\GameController;
 class ConsoleApplication
 {
     private $controller;
+    private $database;
 
     public function __construct()
     {
         $this->controller = new GameController();
+        $this->database = new Database();
     }
 
     public function run(array $args): void
@@ -53,14 +55,79 @@ class ConsoleApplication
 
     private function showGameList(): void
     {
-        \cli\line("Game list functionality will be available with database support");
-        \cli\line("This feature is not implemented yet");
+        \cli\line("\n=== SAVED GAMES ===\n");
+
+        $games = $this->database->getGameList();
+
+        if (empty($games)) {
+            \cli\line("No games saved yet.");
+            return;
+        }
+
+        foreach ($games as $game) {
+            $result = $game['result'] === 'win' ? '✅ WIN' : '❌ LOSE';
+            \cli\line(
+                sprintf(
+                    "[%d] %s | %dx%d | %d mines | %d moves | %s",
+                    $game['id'],
+                    $game['player_name'],
+                    $game['size'],
+                    $game['size'],
+                    $game['mines'],
+                    $game['moves'],
+                    $result
+                )
+            );
+        }
+        \cli\line("");
     }
 
-    private function replayGame(string $id): void
+    private function replayGame(int $id): void
     {
-        \cli\line("Game replay functionality will be available with database support");
-        \cli\line("Replaying game ID: $id (not implemented yet)");
+        $data = $this->database->loadGame($id);
+
+        if (!$data) {
+            \cli\err("Game with ID $id not found.");
+            return;
+        }
+
+        $gameData = $data['game'];
+        $cells = $data['cells'];
+
+        \cli\line("\n=== REPLAYING GAME #$id ===");
+        \cli\line("Player: {$gameData['player_name']}");
+        \cli\line("Size: {$gameData['size']}x{$gameData['size']}, Mines: {$gameData['mines']}");
+        \cli\line("Moves: {$gameData['moves']}, Result: " . ($gameData['result'] === 'win' ? '✅ WIN' : '❌ LOSE'));
+        \cli\line("Created: {$gameData['created_at']}");
+        \cli\line("");
+
+        $model = new GameModel();
+        $size = $gameData['size'];
+        $mines = $gameData['mines'];
+        $model->initializeGame($size, $mines, $gameData['player_name']);
+
+        $mineField = array_fill(0, $size, array_fill(0, $size, 0));
+        $visibleField = array_fill(0, $size, array_fill(0, $size, ' '));
+
+        foreach ($cells as $cell) {
+            $r = $cell['row'];
+            $c = $cell['col'];
+            $mineField[$r][$c] = $cell['mine_value'];
+            $visibleField[$r][$c] = $cell['visible_state'];
+        }
+
+        $model->setMineField($mineField);
+        $model->setVisibleField($visibleField);
+
+        $model->setGameStarted(true);
+
+        $view = new GameView();
+        $view->displayField($visibleField, $model->getRemainingMines());
+
+        \cli\line("\n🔁 This is a replay of the original game. No interactions allowed.");
+        \cli\line("Press Enter to exit...");
+        \cli\prompt('', '');
+        return;
     }
 
     private function showHelp(): void
@@ -77,6 +144,5 @@ class ConsoleApplication
         \cli\line("Game instructions:");
         \cli\line("  Enter coordinates as 'row column' (e.g., '3 5')");
         \cli\line("  Flag mines with 'M row column' (e.g., 'M 3 5')");
-        \cli\line("  Note: Database functionality is not implemented yet");
     }
 }
